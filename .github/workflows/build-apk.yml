@@ -1,9 +1,7 @@
 name: Build Android APK
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch:   # শুধু ম্যানুয়ালি "Run workflow" বাটনে ক্লিক করলেই বিল্ড হবে
 
 jobs:
   build:
