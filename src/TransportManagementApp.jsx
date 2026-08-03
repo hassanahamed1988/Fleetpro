@@ -512,6 +512,384 @@ function ThemeProvider({ children }) {
 }
 
 /* ============================================================================
+   GLOBAL LANGUAGE & CURRENCY SYSTEM — single source of truth for both.
+   Mounted once, at the very top of the tree (see App()), so EVERY screen,
+   subpage, dialog, menu, button, form, and toast reads from the same
+   `lang` / `currency` state via useLang() / useCurrency(). Changing either
+   in Settings updates this state; every component that called useLang()/
+   useCurrency() re-renders immediately — no reload, no re-login, and no
+   per-page wiring, because React context propagates the change on its own.
+
+   HOW TO EXTEND (for any future page/feature — no separate update system
+   needed, this is the "same system" every screen already follows):
+     - Text:    t("some.new.key", "English fallback")
+     - Amount:  formatAmount(rawNumber)
+   That's the entire integration.
+============================================================================ */
+
+// Every UI string lives here, one language per top-level key. Nested paths
+// are looked up with t("a.b.c"). Anything missing for the active language
+// silently falls back to English, then to the caller-supplied fallback (or
+// the key itself) — so a partially-translated new string never breaks.
+const TRANSLATIONS = {
+  en: {
+    nav: {
+      dashboard: "Dashboard", vehicles: "Vehicles", drivers: "Drivers", customers: "Customers",
+      trips: "Trips", booking: "Booking", expenses: "Expenses", income: "Income",
+      fuel: "Fuel Management", maintenance: "Maintenance", reports: "Reports",
+      notifications: "Notifications", settings: "Settings", "control-panel": "Control Panel",
+    },
+    bottomNav: { home: "Home", trips: "Trips", payment: "Payment", profile: "Profile" },
+    dashboardTile: {
+      "new-trip": "New Trip", "monthly-files": "Monthly Files", contact: "Contact",
+      "control-panel": "Control Panel", "new-account": "New Account", "user-accounts": "User Accounts",
+      "user-renew": "User Renew", "my-income": "My Income", payment: "Payment", settings: "Settings",
+      "add-money": "Add Money", "family-maintenance": "Family Maintenance", settlement: "Settlement",
+      support: "Support", chat: "Chat", theme: "Theme", "fuel-dash": "Fuel", "create-cv": "Create CV",
+      statement: "Statement", invoice: "Invoice", wallet: "Wallet", security: "Security",
+    },
+    settingsCard: {
+      "security-password": { label: "Security & Password", description: "Update your login password" },
+      "biometric-security": { label: "Biometric Security", description: "Fingerprint and Face ID login" },
+      language: { label: "Language", description: "Bangla, English, Arabic" },
+      currency: { label: "Currency", description: "BDT, QAR, USD" },
+      theme: { label: "Theme Settings", description: "Preset color palettes" },
+      appearance: { label: "Appearance Mode", description: "Switch between light, dark, and system mode" },
+      "custom-bg": { label: "Custom Background Color", description: "Pick and apply your own background color" },
+      "layout-color": { label: "Layout Color", description: "Top Bar and Bottom Navigation bar color" },
+      "app-logo": { label: "App Logo", description: "Upload a custom logo from your phone" },
+    },
+    controlPanel: {
+      nationality: { label: "Nationality", description: "Manage nationality options" },
+      country: { label: "Country", description: "Manage country list" },
+      "mobile-code": { label: "Mobile Code", description: "Manage country dialing codes" },
+      document: { label: "Document", description: "Manage document types" },
+      "add-money": { label: "Add Money", description: "Manage money top-up entries" },
+      "add-bank": { label: "Add Bank", description: "Manage linked bank accounts" },
+      "container-title": { label: "Container Title", description: "Manage container titles" },
+      "loading-type": { label: "Loading Type", description: "Manage loading type options" },
+      "company-name": { label: "Company Name", description: "Manage company name entries" },
+    },
+    languageOption: {
+      bnLabel: "Bangla", bnCountry: "Bangladesh",
+      enLabel: "English", enCountry: "United States",
+      arLabel: "Arabic", arCountry: "Qatar",
+    },
+    currencyOption: {
+      bdtCountry: "Bangladesh", qarCountry: "Qatar", usdCountry: "United States",
+    },
+    common: {
+      save: "Save", cancel: "Cancel", delete: "Delete", add: "Add", added: "added", deleted: "deleted",
+      addNew: "Add New", savedEntries: "Saved Entries", search: "Search",
+      login: "Login", logout: "Logout", exitApplication: "Exit Application",
+      comingSoon: "Coming Soon", total: "Total", all: "All", record: "record", records: "records",
+      recordsCount: "{count} {unit} total", notifications: "Notifications",
+      update: "Update", updatePassword: "Update Password", yes: "Yes", no: "No", selected: "selected",
+      collapse: "Collapse",
+    },
+    login: {
+      subtitle: "Sign in to continue", email: "Email", password: "Password", emailPlaceholder: "you@company.com",
+    },
+    security: {
+      changePassword: "Change Password", currentPassword: "Current Password", newPassword: "New Password",
+      confirmPassword: "Confirm New Password", mismatch: "New password and confirmation don't match.",
+      hint: "Use at least 6 characters. You'll stay logged in on this device after updating.",
+      passwordUpdated: "Password updated",
+      biometricTitle: "Biometric Security",
+      fingerprintTitle: "Fingerprint Login", fingerprintDesc: "Unlock the app with your fingerprint",
+      faceIdTitle: "Face ID Login", faceIdDesc: "Unlock the app by scanning your face",
+      biometricHint: "When enabled, you can use biometrics instead of your password to log in.",
+      fingerprintEnabled: "Fingerprint login enabled", fingerprintDisabled: "Fingerprint login disabled",
+      faceIdEnabled: "Face ID login enabled", faceIdDisabled: "Face ID login disabled",
+    },
+    dialog: {
+      logoutTitle: "Logout", logoutMessage: "Are you sure you want to close your current session and log out?",
+      exitTitle: "Exit Application", exitMessage: "Are you sure you want to exit the application?",
+    },
+  },
+  bn: {
+    nav: {
+      dashboard: "ড্যাশবোর্ড", vehicles: "যানবাহন", drivers: "চালক", customers: "গ্রাহক",
+      trips: "ট্রিপ", booking: "বুকিং", expenses: "খরচ", income: "আয়",
+      fuel: "জ্বালানি ব্যবস্থাপনা", maintenance: "রক্ষণাবেক্ষণ", reports: "রিপোর্ট",
+      notifications: "নোটিফিকেশন", settings: "সেটিংস", "control-panel": "কন্ট্রোল প্যানেল",
+    },
+    bottomNav: { home: "হোম", trips: "ট্রিপ", payment: "পেমেন্ট", profile: "প্রোফাইল" },
+    dashboardTile: {
+      "new-trip": "নতুন ট্রিপ", "monthly-files": "মাসিক ফাইল", contact: "যোগাযোগ",
+      "control-panel": "কন্ট্রোল প্যানেল", "new-account": "নতুন অ্যাকাউন্ট", "user-accounts": "ইউজার অ্যাকাউন্ট",
+      "user-renew": "ইউজার রিনিউ", "my-income": "আমার আয়", payment: "পেমেন্ট", settings: "সেটিংস",
+      "add-money": "টাকা যোগ করুন", "family-maintenance": "পারিবারিক ভরণপোষণ", settlement: "সেটেলমেন্ট",
+      support: "সাপোর্ট", chat: "চ্যাট", theme: "থিম", "fuel-dash": "জ্বালানি", "create-cv": "সিভি তৈরি করুন",
+      statement: "স্টেটমেন্ট", invoice: "ইনভয়েস", wallet: "ওয়ালেট", security: "নিরাপত্তা",
+    },
+    settingsCard: {
+      "security-password": { label: "নিরাপত্তা ও পাসওয়ার্ড", description: "আপনার লগইন পাসওয়ার্ড পরিবর্তন করুন" },
+      "biometric-security": { label: "বায়োমেট্রিক নিরাপত্তা", description: "ফিঙ্গারপ্রিন্ট ও ফেস আইডি লগইন" },
+      language: { label: "ভাষা", description: "বাংলা, ইংরেজি, আরবি" },
+      currency: { label: "কারেন্সি", description: "BDT, QAR, USD" },
+      theme: { label: "থিম সেটিংস", description: "প্রিসেট কালার প্যালেট" },
+      appearance: { label: "অ্যাপিয়ারেন্স মোড", description: "লাইট, ডার্ক ও সিস্টেম মোডের মধ্যে পরিবর্তন করুন" },
+      "custom-bg": { label: "কাস্টম ব্যাকগ্রাউন্ড কালার", description: "নিজস্ব ব্যাকগ্রাউন্ড কালার বেছে নিন ও প্রয়োগ করুন" },
+      "layout-color": { label: "লেআউট কালার", description: "টপ বার ও বটম নেভিগেশন বারের কালার" },
+      "app-logo": { label: "অ্যাপ লোগো", description: "আপনার ফোন থেকে কাস্টম লোগো আপলোড করুন" },
+    },
+    controlPanel: {
+      nationality: { label: "জাতীয়তা", description: "জাতীয়তার অপশন পরিচালনা করুন" },
+      country: { label: "দেশ", description: "দেশের তালিকা পরিচালনা করুন" },
+      "mobile-code": { label: "মোবাইল কোড", description: "দেশের ডায়ালিং কোড পরিচালনা করুন" },
+      document: { label: "ডকুমেন্ট", description: "ডকুমেন্টের ধরন পরিচালনা করুন" },
+      "add-money": { label: "টাকা যোগ করুন", description: "টাকা যোগ করার এন্ট্রি পরিচালনা করুন" },
+      "add-bank": { label: "ব্যাংক যোগ করুন", description: "সংযুক্ত ব্যাংক অ্যাকাউন্ট পরিচালনা করুন" },
+      "container-title": { label: "কনটেইনার টাইটেল", description: "কনটেইনার টাইটেল পরিচালনা করুন" },
+      "loading-type": { label: "লোডিং টাইপ", description: "লোডিং টাইপের অপশন পরিচালনা করুন" },
+      "company-name": { label: "কোম্পানির নাম", description: "কোম্পানির নামের এন্ট্রি পরিচালনা করুন" },
+    },
+    languageOption: {
+      bnLabel: "বাংলা", bnCountry: "বাংলাদেশ",
+      enLabel: "ইংরেজি", enCountry: "যুক্তরাষ্ট্র",
+      arLabel: "আরবি", arCountry: "কাতার",
+    },
+    currencyOption: {
+      bdtCountry: "বাংলাদেশ", qarCountry: "কাতার", usdCountry: "যুক্তরাষ্ট্র",
+    },
+    common: {
+      save: "সেভ", cancel: "বাতিল", delete: "ডিলিট", add: "যোগ করুন", added: "যোগ হয়েছে", deleted: "ডিলিট হয়েছে",
+      addNew: "নতুন যোগ করুন", savedEntries: "সংরক্ষিত এন্ট্রি", search: "খুঁজুন",
+      login: "লগইন", logout: "লগআউট", exitApplication: "অ্যাপ্লিকেশন বন্ধ করুন",
+      comingSoon: "শীঘ্রই আসছে", total: "মোট", all: "সব", record: "টি রেকর্ড", records: "টি রেকর্ড",
+      recordsCount: "মোট {count} {unit}", notifications: "নোটিফিকেশন",
+      update: "আপডেট", updatePassword: "পাসওয়ার্ড আপডেট করুন", yes: "হ্যাঁ", no: "না", selected: "নির্বাচিত",
+      collapse: "সংকুচিত করুন",
+    },
+    login: {
+      subtitle: "চালিয়ে যেতে সাইন ইন করুন", email: "ইমেইল", password: "পাসওয়ার্ড", emailPlaceholder: "you@company.com",
+    },
+    security: {
+      changePassword: "পাসওয়ার্ড পরিবর্তন করুন", currentPassword: "বর্তমান পাসওয়ার্ড", newPassword: "নতুন পাসওয়ার্ড",
+      confirmPassword: "নতুন পাসওয়ার্ড নিশ্চিত করুন", mismatch: "নতুন পাসওয়ার্ড ও নিশ্চিতকরণ মিলছে না।",
+      hint: "কমপক্ষে ৬টি অক্ষর ব্যবহার করুন। আপডেট করার পর এই ডিভাইসে আপনি লগইন থাকবেন।",
+      passwordUpdated: "পাসওয়ার্ড আপডেট হয়েছে",
+      biometricTitle: "বায়োমেট্রিক নিরাপত্তা",
+      fingerprintTitle: "ফিঙ্গারপ্রিন্ট লগইন", fingerprintDesc: "আপনার ফিঙ্গারপ্রিন্ট দিয়ে অ্যাপ আনলক করুন",
+      faceIdTitle: "ফেস আইডি লগইন", faceIdDesc: "মুখ স্ক্যান করে অ্যাপ আনলক করুন",
+      biometricHint: "চালু করা থাকলে, পাসওয়ার্ডের পরিবর্তে বায়োমেট্রিক দিয়ে লগইন করতে পারবেন।",
+      fingerprintEnabled: "ফিঙ্গারপ্রিন্ট লগইন চালু হয়েছে", fingerprintDisabled: "ফিঙ্গারপ্রিন্ট লগইন বন্ধ হয়েছে",
+      faceIdEnabled: "ফেস আইডি লগইন চালু হয়েছে", faceIdDisabled: "ফেস আইডি লগইন বন্ধ হয়েছে",
+    },
+    dialog: {
+      logoutTitle: "লগআউট", logoutMessage: "আপনি কি নিশ্চিতভাবে বর্তমান সেশন বন্ধ করে লগআউট করতে চান?",
+      exitTitle: "অ্যাপ্লিকেশন বন্ধ করুন", exitMessage: "আপনি কি নিশ্চিতভাবে অ্যাপ্লিকেশনটি বন্ধ করতে চান?",
+    },
+  },
+  ar: {
+    nav: {
+      dashboard: "لوحة التحكم", vehicles: "المركبات", drivers: "السائقون", customers: "العملاء",
+      trips: "الرحلات", booking: "الحجوزات", expenses: "المصروفات", income: "الإيرادات",
+      fuel: "إدارة الوقود", maintenance: "الصيانة", reports: "التقارير",
+      notifications: "الإشعارات", settings: "الإعدادات", "control-panel": "لوحة الإدارة",
+    },
+    bottomNav: { home: "الرئيسية", trips: "الرحلات", payment: "الدفع", profile: "الملف الشخصي" },
+    dashboardTile: {
+      "new-trip": "رحلة جديدة", "monthly-files": "الملفات الشهرية", contact: "اتصال",
+      "control-panel": "لوحة الإدارة", "new-account": "حساب جديد", "user-accounts": "حسابات المستخدمين",
+      "user-renew": "تجديد المستخدم", "my-income": "دخلي", payment: "الدفع", settings: "الإعدادات",
+      "add-money": "إضافة رصيد", "family-maintenance": "نفقة الأسرة", settlement: "التسوية",
+      support: "الدعم", chat: "الدردشة", theme: "المظهر", "fuel-dash": "الوقود", "create-cv": "إنشاء سيرة ذاتية",
+      statement: "كشف الحساب", invoice: "الفاتورة", wallet: "المحفظة", security: "الأمان",
+    },
+    settingsCard: {
+      "security-password": { label: "الأمان وكلمة المرور", description: "تحديث كلمة مرور تسجيل الدخول" },
+      "biometric-security": { label: "الأمان البيومتري", description: "تسجيل الدخول بالبصمة والتعرف على الوجه" },
+      language: { label: "اللغة", description: "البنغالية، الإنجليزية، العربية" },
+      currency: { label: "العملة", description: "BDT, QAR, USD" },
+      theme: { label: "إعدادات المظهر", description: "لوحات ألوان جاهزة" },
+      appearance: { label: "وضع المظهر", description: "التبديل بين الوضع الفاتح والداكن ووضع النظام" },
+      "custom-bg": { label: "لون خلفية مخصص", description: "اختر لون الخلفية الخاص بك وطبّقه" },
+      "layout-color": { label: "لون التخطيط", description: "لون الشريط العلوي وشريط التنقل السفلي" },
+      "app-logo": { label: "شعار التطبيق", description: "تحميل شعار مخصص من هاتفك" },
+    },
+    controlPanel: {
+      nationality: { label: "الجنسية", description: "إدارة خيارات الجنسية" },
+      country: { label: "الدولة", description: "إدارة قائمة الدول" },
+      "mobile-code": { label: "رمز الجوال", description: "إدارة رموز الاتصال الدولية" },
+      document: { label: "المستند", description: "إدارة أنواع المستندات" },
+      "add-money": { label: "إضافة رصيد", description: "إدارة عمليات إضافة الرصيد" },
+      "add-bank": { label: "إضافة بنك", description: "إدارة الحسابات المصرفية المرتبطة" },
+      "container-title": { label: "عنوان الحاوية", description: "إدارة عناوين الحاويات" },
+      "loading-type": { label: "نوع التحميل", description: "إدارة خيارات نوع التحميل" },
+      "company-name": { label: "اسم الشركة", description: "إدارة إدخالات اسم الشركة" },
+    },
+    languageOption: {
+      bnLabel: "البنغالية", bnCountry: "بنغلاديش",
+      enLabel: "الإنجليزية", enCountry: "الولايات المتحدة",
+      arLabel: "العربية", arCountry: "قطر",
+    },
+    currencyOption: {
+      bdtCountry: "بنغلاديش", qarCountry: "قطر", usdCountry: "الولايات المتحدة",
+    },
+    common: {
+      save: "حفظ", cancel: "إلغاء", delete: "حذف", add: "إضافة", added: "تمت الإضافة", deleted: "تم الحذف",
+      addNew: "إضافة جديد", savedEntries: "الإدخالات المحفوظة", search: "بحث",
+      login: "تسجيل الدخول", logout: "تسجيل الخروج", exitApplication: "إغلاق التطبيق",
+      comingSoon: "قريباً", total: "الإجمالي", all: "الكل", record: "سجل", records: "سجلات",
+      recordsCount: "إجمالي {count} {unit}", notifications: "الإشعارات",
+      update: "تحديث", updatePassword: "تحديث كلمة المرور", yes: "نعم", no: "لا", selected: "محدد",
+      collapse: "طي",
+    },
+    login: {
+      subtitle: "سجّل الدخول للمتابعة", email: "البريد الإلكتروني", password: "كلمة المرور", emailPlaceholder: "you@company.com",
+    },
+    security: {
+      changePassword: "تغيير كلمة المرور", currentPassword: "كلمة المرور الحالية", newPassword: "كلمة المرور الجديدة",
+      confirmPassword: "تأكيد كلمة المرور الجديدة", mismatch: "كلمة المرور الجديدة والتأكيد غير متطابقين.",
+      hint: "استخدم 6 أحرف على الأقل. ستبقى مسجلاً للدخول على هذا الجهاز بعد التحديث.",
+      passwordUpdated: "تم تحديث كلمة المرور",
+      biometricTitle: "الأمان البيومتري",
+      fingerprintTitle: "تسجيل الدخول بالبصمة", fingerprintDesc: "افتح التطبيق ببصمتك",
+      faceIdTitle: "تسجيل الدخول بالتعرف على الوجه", faceIdDesc: "افتح التطبيق بمسح وجهك",
+      biometricHint: "عند التفعيل، يمكنك استخدام البيانات البيومترية بدلاً من كلمة المرور لتسجيل الدخول.",
+      fingerprintEnabled: "تم تفعيل تسجيل الدخول بالبصمة", fingerprintDisabled: "تم تعطيل تسجيل الدخول بالبصمة",
+      faceIdEnabled: "تم تفعيل تسجيل الدخول بالوجه", faceIdDisabled: "تم تعطيل تسجيل الدخول بالوجه",
+    },
+    dialog: {
+      logoutTitle: "تسجيل الخروج", logoutMessage: "هل أنت متأكد أنك تريد إنهاء الجلسة الحالية وتسجيل الخروج؟",
+      exitTitle: "إغلاق التطبيق", exitMessage: "هل أنت متأكد أنك تريد إغلاق التطبيق؟",
+    },
+  },
+};
+
+// Human, past-tense feedback toasts, keyed by page — mirrors
+// ADD_SUCCESS_MESSAGE / DELETE_SUCCESS_MESSAGE below but per-language, so
+// "Vehicle added" becomes "যানবাহন যোগ হয়েছে" / "تمت إضافة المركبة" instead
+// of a generic message once the person switches language.
+const FEEDBACK_TRANSLATIONS = {
+  en: {
+    add: {
+      vehicles: "Vehicle added", drivers: "Driver added", customers: "Customer added", trips: "Trip added",
+      booking: "Booking added", expenses: "Expense added", income: "Income added", fuel: "Fuel entry logged",
+      maintenance: "Service scheduled", reports: "Report generated", notifications: "Updated",
+    },
+    delete: {
+      vehicles: "Vehicle deleted", drivers: "Driver deleted", customers: "Customer deleted", trips: "Trip deleted",
+      booking: "Booking deleted", expenses: "Expense deleted", income: "Income entry deleted", fuel: "Fuel entry deleted",
+      maintenance: "Service record deleted", reports: "Report deleted", notifications: "Notification deleted",
+    },
+  },
+  bn: {
+    add: {
+      vehicles: "যানবাহন যোগ হয়েছে", drivers: "চালক যোগ হয়েছে", customers: "গ্রাহক যোগ হয়েছে", trips: "ট্রিপ যোগ হয়েছে",
+      booking: "বুকিং যোগ হয়েছে", expenses: "খরচ যোগ হয়েছে", income: "আয় যোগ হয়েছে", fuel: "জ্বালানি এন্ট্রি লগ হয়েছে",
+      maintenance: "সার্ভিস শিডিউল হয়েছে", reports: "রিপোর্ট তৈরি হয়েছে", notifications: "আপডেট হয়েছে",
+    },
+    delete: {
+      vehicles: "যানবাহন ডিলিট হয়েছে", drivers: "চালক ডিলিট হয়েছে", customers: "গ্রাহক ডিলিট হয়েছে", trips: "ট্রিপ ডিলিট হয়েছে",
+      booking: "বুকিং ডিলিট হয়েছে", expenses: "খরচ ডিলিট হয়েছে", income: "আয় এন্ট্রি ডিলিট হয়েছে", fuel: "জ্বালানি এন্ট্রি ডিলিট হয়েছে",
+      maintenance: "সার্ভিস রেকর্ড ডিলিট হয়েছে", reports: "রিপোর্ট ডিলিট হয়েছে", notifications: "নোটিফিকেশন ডিলিট হয়েছে",
+    },
+  },
+  ar: {
+    add: {
+      vehicles: "تمت إضافة المركبة", drivers: "تمت إضافة السائق", customers: "تمت إضافة العميل", trips: "تمت إضافة الرحلة",
+      booking: "تمت إضافة الحجز", expenses: "تمت إضافة المصروف", income: "تمت إضافة الإيراد", fuel: "تم تسجيل إدخال الوقود",
+      maintenance: "تمت جدولة الصيانة", reports: "تم إنشاء التقرير", notifications: "تم التحديث",
+    },
+    delete: {
+      vehicles: "تم حذف المركبة", drivers: "تم حذف السائق", customers: "تم حذف العميل", trips: "تم حذف الرحلة",
+      booking: "تم حذف الحجز", expenses: "تم حذف المصروف", income: "تم حذف الإيراد", fuel: "تم حذف إدخال الوقود",
+      maintenance: "تم حذف سجل الصيانة", reports: "تم حذف التقرير", notifications: "تم حذف الإشعار",
+    },
+  },
+};
+
+// Currency metadata — symbol shown before the formatted number. Extend this
+// object (and CURRENCY_OPTIONS in the Currency subpage) to support more
+// currencies; every amount in the app formats through formatAmount() so
+// nothing else needs to change.
+const CURRENCY_META = {
+  bdt: { code: "BDT", symbol: "৳" },
+  qar: { code: "QAR", symbol: "ر.ق" },
+  usd: { code: "USD", symbol: "$" },
+};
+
+// Accepts either a raw number or a legacy formatted string ("$4,210") and
+// returns it re-formatted in the currently active currency.
+function parseAmount(value) {
+  if (typeof value === "number") return value;
+  const cleaned = String(value ?? "").replace(/[^0-9.-]/g, "");
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatAmountWith(currencyId, value) {
+  const meta = CURRENCY_META[currencyId] || CURRENCY_META.usd;
+  const n = parseAmount(value);
+  const formatted = n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return `${meta.symbol}${formatted}`;
+}
+
+const AppSettingsContext = createContext(null);
+function useAppSettings() {
+  return useContext(AppSettingsContext);
+}
+// Convenience hooks so components only pull in what they need.
+function useLang() {
+  const { lang, setLang, t, dir } = useAppSettings();
+  return { lang, setLang, t, dir };
+}
+function useCurrency() {
+  const { currency, setCurrency, formatAmount } = useAppSettings();
+  return { currency, setCurrency, formatAmount };
+}
+
+function AppSettingsProvider({ children }) {
+  const [lang, setLang] = useState("en");
+  const [currency, setCurrency] = useState("qar");
+
+  const t = useCallback((path, fallback, params) => {
+    const lookup = (dict) => path.split(".").reduce(
+      (acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), dict
+    );
+    let result = lookup(TRANSLATIONS[lang]);
+    if (result === undefined) result = lookup(TRANSLATIONS.en);
+    if (result === undefined) result = fallback !== undefined ? fallback : path;
+    if (typeof result === "string" && params) {
+      Object.keys(params).forEach((key) => {
+        result = result.replace(new RegExp(`\\{${key}\\}`, "g"), params[key]);
+      });
+    }
+    return result;
+  }, [lang]);
+
+  // Same fallback pattern as t(), scoped to the per-page feedback toasts.
+  const tFeedback = useCallback((kind, pageKey, fallback) => {
+    const dict = FEEDBACK_TRANSLATIONS[lang] || FEEDBACK_TRANSLATIONS.en;
+    return dict[kind]?.[pageKey] || FEEDBACK_TRANSLATIONS.en[kind]?.[pageKey] || fallback;
+  }, [lang]);
+
+  const formatAmount = useCallback((value) => formatAmountWith(currency, value), [currency]);
+
+  const dir = lang === "ar" ? "rtl" : "ltr";
+
+  // Reflects the active language on <html> globally (lang + text direction)
+  // so native browser behavior (fonts, RTL flow for Arabic) applies
+  // app-wide immediately, without a reload.
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = lang;
+      document.documentElement.dir = dir;
+    }
+  }, [lang, dir]);
+
+  const value = useMemo(
+    () => ({ lang, setLang, currency, setCurrency, t, tFeedback, formatAmount, dir }),
+    [lang, currency, t, tFeedback, formatAmount, dir]
+  );
+
+  return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;
+}
+
+/* ============================================================================
    GLOBAL FEEDBACK SYSTEM — iOS-style confirmation HUD. Call showFeedback()
    from anywhere in the app after a create / update / delete action and a
    card drops into the center of the screen: a ring spins while the action
@@ -761,6 +1139,7 @@ function ConfirmDialogHUD({ state, onYes, onNo }) {
 }
 
 function ConfirmDialogProvider({ children }) {
+  const { t } = useLang();
   const [state, setState] = useState({
     visible: false, title: "", message: "",
     confirmLabel: "Yes", cancelLabel: "No", danger: false,
@@ -780,12 +1159,12 @@ function ConfirmDialogProvider({ children }) {
         visible: true,
         title: opts.title || "",
         message: opts.message || "",
-        confirmLabel: opts.confirmLabel || "Yes",
-        cancelLabel: opts.cancelLabel || "No",
+        confirmLabel: opts.confirmLabel || t("common.yes", "Yes"),
+        cancelLabel: opts.cancelLabel || t("common.no", "No"),
         danger: !!opts.danger,
       });
     });
-  }, []);
+  }, [t]);
 
   const settle = useCallback((result) => {
     setState((s) => ({ ...s, visible: false }));
@@ -811,6 +1190,7 @@ function ConfirmDialogProvider({ children }) {
 // silently leaves the app; only a confirmed "Yes" is allowed to proceed.
 function useExitGuard() {
   const { confirm } = useConfirmDialog();
+  const { t } = useLang();
   const guardingRef = useRef(false);
 
   useEffect(() => {
@@ -835,8 +1215,8 @@ function useExitGuard() {
       if (guardingRef.current) return;
       guardingRef.current = true;
       const confirmed = await confirm({
-        title: "Exit Application",
-        message: "Are you sure you want to exit the application?",
+        title: t("dialog.exitTitle", "Exit Application"),
+        message: t("dialog.exitMessage", "Are you sure you want to exit the application?"),
       });
       guardingRef.current = false;
       if (confirmed) {
@@ -852,7 +1232,7 @@ function useExitGuard() {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [confirm]);
+  }, [confirm, t]);
 }
 
 /* ============================================================================
@@ -1021,13 +1401,14 @@ function SectionHeading({ tone = "blue", children, action }) {
 // table stays clean at rest but deleting a record is always one tap away.
 function DeleteRowButton({ onClick }) {
   const { tokens, accent } = useTheme();
+  const { t } = useLang();
   const [hover, setHover] = useState(false);
   const red = accent("red");
   return (
     <button
       type="button"
       aria-label="Delete row"
-      title="Delete"
+      title={t("common.delete", "Delete")}
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -1047,6 +1428,8 @@ function DeleteRowButton({ onClick }) {
 
 function Table({ columns, rows, renderCell, onDeleteRow }) {
   const { tokens } = useTheme();
+  const { formatAmount } = useCurrency();
+  const defaultCell = (col, row) => (col.currency ? formatAmount(row[col.key]) : row[col.key]);
   return (
     <div className="overflow-x-auto -mx-1">
       <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 560 }}>
@@ -1087,7 +1470,7 @@ function Table({ columns, rows, renderCell, onDeleteRow }) {
                   className="px-3 py-3"
                   style={{ fontSize: 13.5, color: tokens.textPrimary, whiteSpace: "nowrap" }}
                 >
-                  {renderCell ? renderCell(col.key, row) ?? row[col.key] : row[col.key]}
+                  {renderCell ? renderCell(col.key, row) ?? defaultCell(col, row) : defaultCell(col, row)}
                 </td>
               ))}
               {onDeleteRow && (
@@ -1443,7 +1826,7 @@ const LIST_CONFIG = {
     title: "Expenses", tone: "red", icon: Receipt, addLabel: "Add Expense",
     columns: [
       { key: "id", label: "Entry" }, { key: "category", label: "Category" },
-      { key: "amount", label: "Amount" }, { key: "status", label: "Status" },
+      { key: "amount", label: "Amount", currency: true }, { key: "status", label: "Status" },
     ],
     fields: [
       { key: "id", label: "Entry Reference", type: "text" },
@@ -1452,10 +1835,10 @@ const LIST_CONFIG = {
       { key: "status", label: "Status", type: "select", options: ["Paid", "Unpaid"] },
     ],
     rows: [
-      { id: "EX-8821", category: "Fuel", amount: "$4,210", status: "Paid" },
-      { id: "EX-8820", category: "Maintenance", amount: "$1,980", status: "Unpaid" },
-      { id: "EX-8819", category: "Toll", amount: "$620", status: "Paid" },
-      { id: "EX-8818", category: "Salary", amount: "$32,400", status: "Paid" },
+      { id: "EX-8821", category: "Fuel", amount: 4210, status: "Paid" },
+      { id: "EX-8820", category: "Maintenance", amount: 1980, status: "Unpaid" },
+      { id: "EX-8819", category: "Toll", amount: 620, status: "Paid" },
+      { id: "EX-8818", category: "Salary", amount: 32400, status: "Paid" },
     ],
     statusKey: "status", statusTone: { Paid: "green", Unpaid: "red" },
   },
@@ -1463,7 +1846,7 @@ const LIST_CONFIG = {
     title: "Income", tone: "green", icon: Wallet, addLabel: "Add Income",
     columns: [
       { key: "id", label: "Entry" }, { key: "source", label: "Source" },
-      { key: "amount", label: "Amount" }, { key: "status", label: "Status" },
+      { key: "amount", label: "Amount", currency: true }, { key: "status", label: "Status" },
     ],
     fields: [
       { key: "id", label: "Entry Reference", type: "text" },
@@ -1472,9 +1855,9 @@ const LIST_CONFIG = {
       { key: "status", label: "Status", type: "select", options: ["Received", "Awaited"] },
     ],
     rows: [
-      { id: "IN-5521", source: "Meridian Logistics", amount: "$18,200", status: "Received" },
-      { id: "IN-5520", source: "Harbor & Co.", amount: "$9,640", status: "Received" },
-      { id: "IN-5519", source: "Prairie Distributors", amount: "$27,100", status: "Awaited" },
+      { id: "IN-5521", source: "Meridian Logistics", amount: 18200, status: "Received" },
+      { id: "IN-5520", source: "Harbor & Co.", amount: 9640, status: "Received" },
+      { id: "IN-5519", source: "Prairie Distributors", amount: 27100, status: "Awaited" },
     ],
     statusKey: "status", statusTone: { Received: "green", Awaited: "amber" },
   },
@@ -1482,7 +1865,7 @@ const LIST_CONFIG = {
     title: "Fuel Management", tone: "amber", icon: Fuel, addLabel: "Log Fuel Entry",
     columns: [
       { key: "vehicle", label: "Vehicle" }, { key: "liters", label: "Liters" },
-      { key: "cost", label: "Cost" }, { key: "status", label: "Status" },
+      { key: "cost", label: "Cost", currency: true }, { key: "status", label: "Status" },
     ],
     fields: [
       { key: "vehicle", label: "Vehicle Number", type: "text" },
@@ -1491,9 +1874,9 @@ const LIST_CONFIG = {
       { key: "status", label: "Status", type: "select", options: ["Logged", "Flagged"] },
     ],
     rows: [
-      { vehicle: "TN-04 GJ 8821", liters: "180 L", cost: "$310", status: "Logged" },
-      { vehicle: "TX-91 KL 4470", liters: "205 L", cost: "$352", status: "Logged" },
-      { vehicle: "CO-30 ZR 6634", liters: "96 L", cost: "$188", status: "Flagged" },
+      { vehicle: "TN-04 GJ 8821", liters: "180 L", cost: 310, status: "Logged" },
+      { vehicle: "TX-91 KL 4470", liters: "205 L", cost: 352, status: "Logged" },
+      { vehicle: "CO-30 ZR 6634", liters: "96 L", cost: 188, status: "Flagged" },
     ],
     statusKey: "status", statusTone: { Logged: "green", Flagged: "red" },
   },
@@ -1658,7 +2041,7 @@ const CONTROL_PANEL_ITEMS = [
     description: "Manage money top-up entries",
     addLabel: "Add Money", successLabel: "Money entry added",
     fields: [
-      { key: "amount", label: "Amount" },
+      { key: "amount", label: "Amount", currency: true },
       { key: "note", label: "Note / Reference" },
     ],
   },
@@ -1698,6 +2081,7 @@ const CONTROL_PANEL_ITEMS = [
 
 function Sidebar({ active, onNavigate, collapsed, onToggleCollapse, mobileOpen, onCloseMobile, isMobile, onLogout }) {
   const { tokens, accent, appLogo, logoRadiusFraction } = useTheme();
+  const { t } = useLang();
   const width = collapsed && !isMobile ? 76 : 256;
 
   return (
@@ -1772,11 +2156,12 @@ function Sidebar({ active, onNavigate, collapsed, onToggleCollapse, mobileOpen, 
           {NAV_ITEMS.map((item) => {
             const isActive = active === item.key;
             const Icon = item.icon;
+            const label = t(`nav.${item.key}`, item.label);
             return (
               <button
                 key={item.key}
                 onClick={() => onNavigate(item.key)}
-                title={collapsed && !isMobile ? item.label : undefined}
+                title={collapsed && !isMobile ? label : undefined}
                 className="w-full flex items-center gap-3 rounded-xl mb-1 relative"
                 style={{
                   padding: collapsed && !isMobile ? "10px" : "10px 12px",
@@ -1800,7 +2185,7 @@ function Sidebar({ active, onNavigate, collapsed, onToggleCollapse, mobileOpen, 
                 <Icon size={ICON} strokeWidth={2} style={{ flexShrink: 0 }} />
                 {(!collapsed || isMobile) && (
                   <span style={{ fontSize: 13.5, fontWeight: isActive ? 620 : 500, whiteSpace: "nowrap" }}>
-                    {item.label}
+                    {label}
                   </span>
                 )}
               </button>
@@ -1817,12 +2202,12 @@ function Sidebar({ active, onNavigate, collapsed, onToggleCollapse, mobileOpen, 
               onMouseEnter={(e) => (e.currentTarget.style.background = tokens.hoverTint)}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              {collapsed ? <ChevronRight size={ICON} /> : <><ChevronLeft size={ICON} /><span style={{ fontSize: 13 }}>Collapse</span></>}
+              {collapsed ? <ChevronRight size={ICON} /> : <><ChevronLeft size={ICON} /><span style={{ fontSize: 13 }}>{t("common.collapse", "Collapse")}</span></>}
             </button>
           )}
           <button
             onClick={onLogout}
-            title={collapsed && !isMobile ? "Logout" : undefined}
+            title={collapsed && !isMobile ? t("common.logout", "Logout") : undefined}
             className="w-full flex items-center gap-2 rounded-xl"
             style={{
               padding: collapsed && !isMobile ? "9px" : "9px 12px",
@@ -1835,7 +2220,7 @@ function Sidebar({ active, onNavigate, collapsed, onToggleCollapse, mobileOpen, 
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
             <LogOut size={ICON} strokeWidth={2} style={{ flexShrink: 0 }} />
-            {(!collapsed || isMobile) && <span style={{ fontSize: 13.5, fontWeight: 500 }}>Logout</span>}
+            {(!collapsed || isMobile) && <span style={{ fontSize: 13.5, fontWeight: 500 }}>{t("common.logout", "Logout")}</span>}
           </button>
         </div>
       </aside>
@@ -1856,6 +2241,7 @@ function Sidebar({ active, onNavigate, collapsed, onToggleCollapse, mobileOpen, 
 // surfacing the "Coming Soon" banner.
 function BottomNav({ active, onNavigate, onComingSoon }) {
   const { tokens, accent } = useTheme();
+  const { t } = useLang();
   return (
     <nav
       className="flex items-stretch flex-shrink-0"
@@ -1870,18 +2256,19 @@ function BottomNav({ active, onNavigate, onComingSoon }) {
         const Icon = item.icon;
         const isHome = item.key === "home";
         const isActive = isHome && active === "dashboard";
+        const label = t(`bottomNav.${item.key}`, item.label);
         return (
           <button
             key={item.key}
             type="button"
-            onClick={() => (isHome ? onNavigate("dashboard") : onComingSoon(item.label))}
+            onClick={() => (isHome ? onNavigate("dashboard") : onComingSoon(label))}
             className="flex-1 flex flex-col items-center justify-center gap-1"
             style={{ color: isActive ? accent("blue") : tokens.bgTextSecondary, cursor: "pointer" }}
             onMouseDown={(e) => (e.currentTarget.style.opacity = "0.6")}
             onMouseUp={(e) => (e.currentTarget.style.opacity = "1")}
           >
             <Icon size={20} strokeWidth={2} />
-            <span style={{ fontSize: 11, fontWeight: 550 }}>{item.label}</span>
+            <span style={{ fontSize: 11, fontWeight: 550 }}>{label}</span>
           </button>
         );
       })}
@@ -1895,6 +2282,7 @@ function BottomNav({ active, onNavigate, onComingSoon }) {
 
 function TopBar({ onMenuClick, activeLabel, onNavigate, onBack, hasSubpage }) {
   const { tokens, accent, mode, setMode } = useTheme();
+  const { t } = useLang();
   const [notifOpen, setNotifOpen] = useState(false);
   const ref = useRef(null);
 
@@ -1964,7 +2352,7 @@ function TopBar({ onMenuClick, activeLabel, onNavigate, onBack, hasSubpage }) {
 
       <div className="flex items-center gap-2">
         <div className="relative" ref={ref}>
-          <IconButton icon={Bell} label="Notifications" active={notifOpen} onLiveBg onClick={() => setNotifOpen((v) => !v)} />
+          <IconButton icon={Bell} label={t("common.notifications", "Notifications")} active={notifOpen} onLiveBg onClick={() => setNotifOpen((v) => !v)} />
           <span
             style={{
               position: "absolute", top: 6, right: 6, width: 7, height: 7, borderRadius: 999,
@@ -1980,7 +2368,7 @@ function TopBar({ onMenuClick, activeLabel, onNavigate, onBack, hasSubpage }) {
               }}
             >
               <div className="px-4 py-3" style={{ borderBottom: `1px solid ${tokens.divider}`, fontSize: 13.5, fontWeight: 650, color: tokens.textPrimary }}>
-                Notifications
+                {t("common.notifications", "Notifications")}
               </div>
               {NOTIFICATIONS.map((n) => (
                 <div key={n.id} className="flex items-start gap-3 px-4 py-3" style={{ borderBottom: `1px solid ${tokens.divider}` }}>
@@ -2099,7 +2487,7 @@ function StatCard({ item }) {
 // Single tappable tile in the Dashboard quick-action grid: a tinted icon
 // chip over a short label, matching the same card/hover language used by
 // StatCard elsewhere in the app.
-function DashboardIconTile({ item, onClick }) {
+function DashboardIconTile({ item, label, onClick }) {
   const { tokens, accent } = useTheme();
   const [hover, setHover] = useState(false);
   const color = accent(item.tone);
@@ -2133,7 +2521,7 @@ function DashboardIconTile({ item, onClick }) {
           textAlign: "center", lineHeight: 1.25,
         }}
       >
-        {item.label}
+        {label}
       </span>
     </button>
   );
@@ -2141,6 +2529,7 @@ function DashboardIconTile({ item, onClick }) {
 
 function Dashboard({ onNavigate, onComingSoon }) {
   const { tokens } = useTheme();
+  const { t } = useLang();
   const nav = useNavigator();
 
   // The dashboard's "Add Money" tile has no page of its own — it opens the
@@ -2151,7 +2540,8 @@ function Dashboard({ onNavigate, onComingSoon }) {
   const handleTileClick = (item) => {
     if (item.key === "add-money") {
       const cpItem = CONTROL_PANEL_ITEMS.find((i) => i.key === "add-money");
-      nav.push(cpItem.label, <ControlPanelItemPage item={cpItem} />);
+      const label = t(`controlPanel.${cpItem.key}.label`, cpItem.label);
+      nav.push(label, <ControlPanelItemPage item={cpItem} />);
       return;
     }
     if (item.navKey) {
@@ -2168,6 +2558,7 @@ function Dashboard({ onNavigate, onComingSoon }) {
           <DashboardIconTile
             key={item.key}
             item={item}
+            label={t(`dashboardTile.${item.key}`, item.label)}
             onClick={() => handleTileClick(item)}
           />
         ))}
@@ -2211,6 +2602,7 @@ function ListPage({ pageKey }) {
   const config = LIST_CONFIG[pageKey];
   const { tokens } = useTheme();
   const { showFeedback } = useFeedback();
+  const { t, tFeedback } = useLang();
   const [rows, setRows] = useState(config.rows);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({});
@@ -2218,18 +2610,19 @@ function ListPage({ pageKey }) {
   useEffect(() => { setRows(config.rows); setForm({}); }, [pageKey]); // eslint-disable-line
 
   const summary = useMemo(() => computeSummary(config, rows), [config, rows]);
+  const title = t(`nav.${pageKey}`, config.title);
 
   const handleAdd = () => {
     if (config.fields.length === 0) { setOpen(false); return; }
     setRows((r) => [{ ...form, id: form.id || `NEW-${r.length + 1}` }, ...r]);
     setForm({});
     setOpen(false);
-    showFeedback(ADD_SUCCESS_MESSAGE[pageKey] || "Saved successfully");
+    showFeedback(tFeedback("add", pageKey, ADD_SUCCESS_MESSAGE[pageKey] || "Saved successfully"));
   };
 
   const handleDelete = (row, index) => {
     setRows((r) => r.filter((_, i) => i !== index));
-    showFeedback(DELETE_SUCCESS_MESSAGE[pageKey] || "Deleted successfully");
+    showFeedback(tFeedback("delete", pageKey, DELETE_SUCCESS_MESSAGE[pageKey] || "Deleted successfully"));
   };
 
   const Icon = config.icon;
@@ -2239,10 +2632,13 @@ function ListPage({ pageKey }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 style={{ fontSize: 21, fontWeight: 700, color: tokens.bgTextPrimary, letterSpacing: "-0.02em" }}>
-            {config.title}
+            {title}
           </h1>
           <p style={{ fontSize: 13.5, color: tokens.bgTextSecondary, marginTop: 3 }}>
-            {rows.length} {rows.length === 1 ? "record" : "records"} total
+            {t("common.recordsCount", `${rows.length} ${rows.length === 1 ? "record" : "records"} total`, {
+              count: rows.length,
+              unit: rows.length === 1 ? t("common.record", "record") : t("common.records", "records"),
+            })}
           </p>
         </div>
         {config.fields.length > 0 && (
@@ -2255,7 +2651,7 @@ function ListPage({ pageKey }) {
       </div>
 
       <Card padding={20}>
-        <SectionHeading tone={config.tone}>All {config.title}</SectionHeading>
+        <SectionHeading tone={config.tone}>{t("common.all", "All")} {title}</SectionHeading>
         <Table
           columns={config.columns}
           rows={rows}
@@ -2274,8 +2670,8 @@ function ListPage({ pageKey }) {
         onClose={() => setOpen(false)}
         title={config.addLabel}
         footer={<>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button icon={Check} onClick={handleAdd}>Save</Button>
+          <Button variant="ghost" onClick={() => setOpen(false)}>{t("common.cancel", "Cancel")}</Button>
+          <Button icon={Check} onClick={handleAdd}>{t("common.save", "Save")}</Button>
         </>}
       >
         {config.fields.map((f) => (
@@ -2339,7 +2735,7 @@ function ControlPanelDataProvider({ children }) {
    per-item subpage that opens when one is tapped.
 ============================================================================ */
 
-function ControlPanelCard({ item, onClick }) {
+function ControlPanelCard({ item, label, description, onClick }) {
   const { tokens, accent } = useTheme();
   const [hover, setHover] = useState(false);
   const color = accent(item.tone);
@@ -2368,8 +2764,8 @@ function ControlPanelCard({ item, onClick }) {
         <Icon size={21} color={color} strokeWidth={2} />
       </div>
       <div className="min-w-0 flex-1">
-        <div style={{ fontSize: 14, fontWeight: 650, color: tokens.textPrimary }}>{item.label}</div>
-        <div style={{ fontSize: 11.5, color: tokens.textTertiary, marginTop: 1 }}>{item.description}</div>
+        <div style={{ fontSize: 14, fontWeight: 650, color: tokens.textPrimary }}>{label}</div>
+        <div style={{ fontSize: 11.5, color: tokens.textTertiary, marginTop: 1 }}>{description}</div>
       </div>
       <ChevronRight size={17} color={tokens.textTertiary} style={{ flexShrink: 0 }} />
     </button>
@@ -2379,6 +2775,7 @@ function ControlPanelCard({ item, onClick }) {
 function ControlPanelItemPage({ item }) {
   const { tokens } = useTheme();
   const { showFeedback } = useFeedback();
+  const { t } = useLang();
   const { entriesByItem, addEntry, deleteEntry } = useControlPanelData();
   const [form, setForm] = useState({});
   const entries = entriesByItem[item.key];
@@ -2395,7 +2792,7 @@ function ControlPanelItemPage({ item }) {
   return (
     <div className="flex flex-col gap-5">
       <Card padding={22}>
-        <SectionHeading tone={item.tone}>Add New</SectionHeading>
+        <SectionHeading tone={item.tone}>{t("common.addNew", "Add New")}</SectionHeading>
         {item.fields.map((f) => (
           <FloatingInput
             key={f.key}
@@ -2408,7 +2805,7 @@ function ControlPanelItemPage({ item }) {
       </Card>
 
       <Card padding={20}>
-        <SectionHeading tone={item.tone}>Saved Entries</SectionHeading>
+        <SectionHeading tone={item.tone}>{t("common.savedEntries", "Saved Entries")}</SectionHeading>
         <Table columns={item.fields} rows={entries} onDeleteRow={(row, i) => deleteEntry(item.key, i)} />
       </Card>
     </div>
@@ -2417,17 +2814,24 @@ function ControlPanelItemPage({ item }) {
 
 function ControlPanelPage() {
   const nav = useNavigator();
+  const { t } = useLang();
 
   return (
     <div className="flex flex-col gap-5">
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
-        {CONTROL_PANEL_ITEMS.map((item) => (
-          <ControlPanelCard
-            key={item.key}
-            item={item}
-            onClick={() => nav.push(item.label, <ControlPanelItemPage item={item} />)}
-          />
-        ))}
+        {CONTROL_PANEL_ITEMS.map((item) => {
+          const label = t(`controlPanel.${item.key}.label`, item.label);
+          const description = t(`controlPanel.${item.key}.description`, item.description);
+          return (
+            <ControlPanelCard
+              key={item.key}
+              item={item}
+              label={label}
+              description={description}
+              onClick={() => nav.push(label, <ControlPanelItemPage item={item} />)}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -2468,6 +2872,7 @@ function ModeOption({ value, label, icon: Icon, current, onSelect }) {
 
 function ComingSoonBanner({ show }) {
   const { tokens, accent } = useTheme();
+  const { t } = useLang();
   const blue = accent("blue");
   return (
     <div
@@ -2485,7 +2890,7 @@ function ComingSoonBanner({ show }) {
         className="flex items-center justify-center gap-2 px-4"
         style={{ height: 46, fontSize: 13.5, fontWeight: 650, color: blue }}
       >
-        Coming Soon
+        {t("common.comingSoon", "Coming Soon")}
       </div>
     </div>
   );
@@ -3089,6 +3494,7 @@ function ThemeSettingsSubpage() {
 function SecurityPasswordSubpage() {
   const { tokens, accent } = useTheme();
   const { showFeedback } = useFeedback();
+  const { t } = useLang();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -3101,39 +3507,39 @@ function SecurityPasswordSubpage() {
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
-    showFeedback("Password updated");
+    showFeedback(t("security.passwordUpdated", "Password updated"));
   };
 
   return (
     <div className="flex flex-col gap-5" style={{ maxWidth: 460 }}>
       <Card padding={22}>
-        <SectionHeading tone="red">Change Password</SectionHeading>
+        <SectionHeading tone="red">{t("security.changePassword", "Change Password")}</SectionHeading>
         <FloatingInput
-          label="Current Password"
+          label={t("security.currentPassword", "Current Password")}
           type="password"
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
         />
         <FloatingInput
-          label="New Password"
+          label={t("security.newPassword", "New Password")}
           type="password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
         />
         <FloatingInput
-          label="Confirm New Password"
+          label={t("security.confirmPassword", "Confirm New Password")}
           type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
         {mismatch && (
           <p style={{ fontSize: 12, color: accent("red"), marginTop: -8, marginBottom: 12 }}>
-            New password and confirmation don't match.
+            {t("security.mismatch", "New password and confirmation don't match.")}
           </p>
         )}
-        <Button icon={Lock} onClick={handleUpdate} disabled={!isValid}>Update Password</Button>
+        <Button icon={Lock} onClick={handleUpdate} disabled={!isValid}>{t("common.updatePassword", "Update Password")}</Button>
         <p style={{ fontSize: 12, color: tokens.textTertiary, marginTop: 12 }}>
-          Use at least 6 characters. You'll stay logged in on this device after updating.
+          {t("security.hint", "Use at least 6 characters. You'll stay logged in on this device after updating.")}
         </p>
       </Card>
     </div>
@@ -3207,35 +3613,42 @@ function BiometricRow({ icon: Icon, tone, title, description, checked, onChange 
 function BiometricSecuritySubpage() {
   const { tokens } = useTheme();
   const { showFeedback } = useFeedback();
+  const { t } = useLang();
   const [fingerprint, setFingerprint] = useState(false);
   const [faceId, setFaceId] = useState(false);
 
   return (
     <div className="flex flex-col gap-5" style={{ maxWidth: 520 }}>
       <Card padding={22}>
-        <SectionHeading tone="violet">Biometric Security</SectionHeading>
+        <SectionHeading tone="violet">{t("security.biometricTitle", "Biometric Security")}</SectionHeading>
         <div className="flex flex-col">
           <div style={{ borderBottom: `1px solid ${tokens.divider}` }}>
             <BiometricRow
               icon={Fingerprint}
               tone="violet"
-              title="Fingerprint Login"
-              description="Unlock the app with your fingerprint"
+              title={t("security.fingerprintTitle", "Fingerprint Login")}
+              description={t("security.fingerprintDesc", "Unlock the app with your fingerprint")}
               checked={fingerprint}
-              onChange={(v) => { setFingerprint(v); showFeedback(v ? "Fingerprint login enabled" : "Fingerprint login disabled"); }}
+              onChange={(v) => {
+                setFingerprint(v);
+                showFeedback(v ? t("security.fingerprintEnabled", "Fingerprint login enabled") : t("security.fingerprintDisabled", "Fingerprint login disabled"));
+              }}
             />
           </div>
           <BiometricRow
             icon={ShieldCheck}
             tone="blue"
-            title="Face ID Login"
-            description="Unlock the app by scanning your face"
+            title={t("security.faceIdTitle", "Face ID Login")}
+            description={t("security.faceIdDesc", "Unlock the app by scanning your face")}
             checked={faceId}
-            onChange={(v) => { setFaceId(v); showFeedback(v ? "Face ID login enabled" : "Face ID login disabled"); }}
+            onChange={(v) => {
+              setFaceId(v);
+              showFeedback(v ? t("security.faceIdEnabled", "Face ID login enabled") : t("security.faceIdDisabled", "Face ID login disabled"));
+            }}
           />
         </div>
         <p style={{ fontSize: 12, color: tokens.textTertiary, marginTop: 8 }}>
-          When enabled, you can use biometrics instead of your password to log in.
+          {t("security.biometricHint", "When enabled, you can use biometrics instead of your password to log in.")}
         </p>
       </Card>
     </div>
@@ -3291,21 +3704,25 @@ function SettingsOptionRow({ label, country, selected, onSelect }) {
 
 function LanguageSubpage() {
   const { showFeedback } = useFeedback();
-  const [language, setLanguage] = useState("en");
+  const { lang, setLang, t } = useLang();
 
   return (
     <div className="flex flex-col gap-5" style={{ maxWidth: 460 }}>
       <Card padding={22}>
-        <SectionHeading tone="teal">Language</SectionHeading>
-        {LANGUAGE_OPTIONS.map((opt) => (
-          <SettingsOptionRow
-            key={opt.id}
-            label={opt.label}
-            country={opt.country}
-            selected={language === opt.id}
-            onSelect={() => { setLanguage(opt.id); showFeedback(`${opt.label} selected`); }}
-          />
-        ))}
+        <SectionHeading tone="teal">{t("settingsCard.language.label", "Language")}</SectionHeading>
+        {LANGUAGE_OPTIONS.map((opt) => {
+          const label = t(`languageOption.${opt.id}Label`, opt.label);
+          const country = t(`languageOption.${opt.id}Country`, opt.country);
+          return (
+            <SettingsOptionRow
+              key={opt.id}
+              label={label}
+              country={country}
+              selected={lang === opt.id}
+              onSelect={() => { setLang(opt.id); showFeedback(`${label} ${t("common.selected", "selected")}`); }}
+            />
+          );
+        })}
       </Card>
     </div>
   );
@@ -3313,21 +3730,25 @@ function LanguageSubpage() {
 
 function CurrencySubpage() {
   const { showFeedback } = useFeedback();
-  const [currency, setCurrency] = useState("qar");
+  const { currency, setCurrency } = useCurrency();
+  const { t } = useLang();
 
   return (
     <div className="flex flex-col gap-5" style={{ maxWidth: 460 }}>
       <Card padding={22}>
-        <SectionHeading tone="amber">Currency</SectionHeading>
-        {CURRENCY_OPTIONS.map((opt) => (
-          <SettingsOptionRow
-            key={opt.id}
-            label={opt.label}
-            country={opt.country}
-            selected={currency === opt.id}
-            onSelect={() => { setCurrency(opt.id); showFeedback(`${opt.label} selected`); }}
-          />
-        ))}
+        <SectionHeading tone="amber">{t("settingsCard.currency.label", "Currency")}</SectionHeading>
+        {CURRENCY_OPTIONS.map((opt) => {
+          const country = t(`currencyOption.${opt.id}Country`, opt.country);
+          return (
+            <SettingsOptionRow
+              key={opt.id}
+              label={opt.label}
+              country={country}
+              selected={currency === opt.id}
+              onSelect={() => { setCurrency(opt.id); showFeedback(`${opt.label} ${t("common.selected", "selected")}`); }}
+            />
+          );
+        })}
       </Card>
     </div>
   );
@@ -3335,6 +3756,7 @@ function CurrencySubpage() {
 
 function SettingsPage() {
   const { tokens, accent } = useTheme();
+  const { t } = useLang();
   const nav = useNavigator();
 
   const SETTINGS_CARDS = [
@@ -3418,11 +3840,13 @@ function SettingsPage() {
         {SETTINGS_CARDS.map((item) => {
           const Icon = item.icon;
           const color = accent(item.tone);
+          const label = t(`settingsCard.${item.key}.label`, item.label);
+          const description = t(`settingsCard.${item.key}.description`, item.description);
           return (
             <button
               key={item.key}
               type="button"
-              onClick={() => nav.push(item.label, item.page)}
+              onClick={() => nav.push(label, item.page)}
               className="flex items-center gap-4 rounded-2xl text-left w-full group"
               style={{
                 padding: 20,
@@ -3450,8 +3874,8 @@ function SettingsPage() {
                 <Icon size={22} color={color} strokeWidth={2} />
               </div>
               <div className="flex-1 min-w-0">
-                <div style={{ fontSize: 14.5, fontWeight: 660, color: tokens.textPrimary }}>{item.label}</div>
-                <div style={{ fontSize: 12, color: tokens.textTertiary, marginTop: 2, lineHeight: 1.4 }}>{item.description}</div>
+                <div style={{ fontSize: 14.5, fontWeight: 660, color: tokens.textPrimary }}>{label}</div>
+                <div style={{ fontSize: 12, color: tokens.textTertiary, marginTop: 2, lineHeight: 1.4 }}>{description}</div>
               </div>
               <ChevronRight size={17} color={tokens.textTertiary} style={{ flexShrink: 0 }} />
             </button>
@@ -3815,6 +4239,7 @@ function NavigationOverlayOutlet({ children }) {
 
 function AppShell({ onLogout }) {
   const { tokens, pageBgStyle } = useTheme();
+  const { t } = useLang();
   const nav = useNavigator();
   const [active, setActive]       = useState("dashboard");
   const [collapsed, setCollapsed] = useState(false);
@@ -3824,8 +4249,8 @@ function AppShell({ onLogout }) {
   const comingSoonTimer = useRef(null);
 
   const pageBaseLabel = active === "control-panel"
-    ? "Control Panel"
-    : NAV_ITEMS.find((n) => n.key === active)?.label || "";
+    ? t("nav.control-panel", "Control Panel")
+    : t(`nav.${active}`, NAV_ITEMS.find((n) => n.key === active)?.label || "");
 
   // TopBar shows the pushed subpage's label when one is open, else the
   // current section's own label — driven entirely by the global navigator.
@@ -3906,6 +4331,7 @@ function AppShell({ onLogout }) {
 
 function LoginScreen({ onLogin }) {
   const { tokens, accent, appLogo, logoRadiusFraction, pageBgStyle } = useTheme();
+  const { t } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -3980,27 +4406,27 @@ function LoginScreen({ onLogin }) {
               RouteWise TMS
             </div>
             <div style={{ fontSize: 13, color: tokens.textSecondary, marginTop: 2 }}>
-              Sign in to continue
+              {t("login.subtitle", "Sign in to continue")}
             </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: tokens.textSecondary }}>Email</label>
+            <label style={{ fontSize: 12.5, fontWeight: 600, color: tokens.textSecondary }}>{t("login.email", "Email")}</label>
             <div style={{ position: "relative" }}>
               <Mail size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: tokens.textTertiary }} />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
+                placeholder={t("login.emailPlaceholder", "you@company.com")}
                 style={{ ...inputStyle, paddingLeft: 38 }}
               />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: tokens.textSecondary }}>Password</label>
+            <label style={{ fontSize: 12.5, fontWeight: 600, color: tokens.textSecondary }}>{t("login.password", "Password")}</label>
             <div style={{ position: "relative" }}>
               <Lock size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: tokens.textTertiary }} />
               <input
@@ -4023,7 +4449,7 @@ function LoginScreen({ onLogin }) {
             color: "#fff", background: accent("blue"), border: "none", cursor: "pointer",
           }}
         >
-          Login
+          {t("common.login", "Login")}
         </button>
       </div>
     </div>
@@ -4040,12 +4466,13 @@ function LoginScreen({ onLogin }) {
 function AuthGate() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const { confirm } = useConfirmDialog();
+  const { t } = useLang();
   useExitGuard(); // Back button → "Exit Application" dialog, on every screen
 
   const handleLogout = async () => {
     const confirmed = await confirm({
-      title: "Logout",
-      message: "Are you sure you want to close your current session and log out?",
+      title: t("dialog.logoutTitle", "Logout"),
+      message: t("dialog.logoutMessage", "Are you sure you want to close your current session and log out?"),
       danger: true,
     });
     if (confirmed) setIsLoggedIn(false);
@@ -4066,12 +4493,14 @@ function AuthGate() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <FeedbackProvider>
-        <ConfirmDialogProvider>
-          <AuthGate />
-        </ConfirmDialogProvider>
-      </FeedbackProvider>
-    </ThemeProvider>
+    <AppSettingsProvider>
+      <ThemeProvider>
+        <FeedbackProvider>
+          <ConfirmDialogProvider>
+            <AuthGate />
+          </ConfirmDialogProvider>
+        </FeedbackProvider>
+      </ThemeProvider>
+    </AppSettingsProvider>
   );
 }
