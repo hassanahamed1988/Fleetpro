@@ -10,7 +10,7 @@ import {
   UserCheck, PiggyBank, CircleDollarSign, HeartHandshake, HandCoins,
   LifeBuoy, MessageCircle, Palette, FileEdit, FileText, ShieldCheck,
   Flag, Globe, Landmark, Package, PackageCheck, LogOut, Lock, Mail,
-  Upload, Image as ImageIcon, Building2, Fingerprint, Banknote,
+  Upload, Image as ImageIcon, Building2, Fingerprint, Banknote, Smartphone, QrCode,
 } from "lucide-react";
 
 /* ============================================================================
@@ -664,6 +664,13 @@ const TRANSLATIONS = {
       biometricHint: "When enabled, you can use biometrics instead of your password to log in.",
       fingerprintEnabled: "Fingerprint login enabled", fingerprintDisabled: "Fingerprint login disabled",
       faceIdEnabled: "Face ID login enabled", faceIdDisabled: "Face ID login disabled",
+      authenticatorTitle: "Google Authenticator",
+      authenticatorRowTitle: "Authenticator App", authenticatorRowDesc: "Use Google Authenticator for 2-step verification",
+      authenticatorScanHint: "Scan this QR code with the Google Authenticator app, or enter the key manually:",
+      authenticatorCodeLabel: "6-digit code",
+      authenticatorVerify: "Verify & Enable",
+      authenticatorEnabledHint: "Google Authenticator is protecting your account.",
+      authenticatorEnabled: "Google Authenticator enabled", authenticatorDisabled: "Google Authenticator disabled",
     },
     dialog: {
       logoutTitle: "Logout", logoutMessage: "Are you sure you want to close your current session and log out?",
@@ -739,6 +746,13 @@ const TRANSLATIONS = {
       biometricHint: "চালু করা থাকলে, পাসওয়ার্ডের পরিবর্তে বায়োমেট্রিক দিয়ে লগইন করতে পারবেন।",
       fingerprintEnabled: "ফিঙ্গারপ্রিন্ট লগইন চালু হয়েছে", fingerprintDisabled: "ফিঙ্গারপ্রিন্ট লগইন বন্ধ হয়েছে",
       faceIdEnabled: "ফেস আইডি লগইন চালু হয়েছে", faceIdDisabled: "ফেস আইডি লগইন বন্ধ হয়েছে",
+      authenticatorTitle: "গুগল অথেনটিকেটর",
+      authenticatorRowTitle: "অথেনটিকেটর অ্যাপ", authenticatorRowDesc: "টু-স্টেপ ভেরিফিকেশনের জন্য গুগল অথেনটিকেটর ব্যবহার করুন",
+      authenticatorScanHint: "গুগল অথেনটিকেটর অ্যাপ দিয়ে এই QR কোডটি স্ক্যান করুন, অথবা কী-টি ম্যানুয়ালি লিখুন:",
+      authenticatorCodeLabel: "৬-সংখ্যার কোড",
+      authenticatorVerify: "যাচাই করে চালু করুন",
+      authenticatorEnabledHint: "গুগল অথেনটিকেটর আপনার অ্যাকাউন্ট সুরক্ষা দিচ্ছে।",
+      authenticatorEnabled: "গুগল অথেনটিকেটর চালু হয়েছে", authenticatorDisabled: "গুগল অথেনটিকেটর বন্ধ হয়েছে",
     },
     dialog: {
       logoutTitle: "লগআউট", logoutMessage: "আপনি কি নিশ্চিতভাবে বর্তমান সেশন বন্ধ করে লগআউট করতে চান?",
@@ -814,6 +828,13 @@ const TRANSLATIONS = {
       biometricHint: "عند التفعيل، يمكنك استخدام البيانات البيومترية بدلاً من كلمة المرور لتسجيل الدخول.",
       fingerprintEnabled: "تم تفعيل تسجيل الدخول بالبصمة", fingerprintDisabled: "تم تعطيل تسجيل الدخول بالبصمة",
       faceIdEnabled: "تم تفعيل تسجيل الدخول بالوجه", faceIdDisabled: "تم تعطيل تسجيل الدخول بالوجه",
+      authenticatorTitle: "تطبيق Google Authenticator",
+      authenticatorRowTitle: "تطبيق المصادقة", authenticatorRowDesc: "استخدم Google Authenticator للتحقق بخطوتين",
+      authenticatorScanHint: "امسح رمز QR هذا باستخدام تطبيق Google Authenticator، أو أدخل المفتاح يدويًا:",
+      authenticatorCodeLabel: "رمز مكون من 6 أرقام",
+      authenticatorVerify: "تحقق وتفعيل",
+      authenticatorEnabledHint: "يقوم Google Authenticator بحماية حسابك.",
+      authenticatorEnabled: "تم تفعيل Google Authenticator", authenticatorDisabled: "تم تعطيل Google Authenticator",
     },
     dialog: {
       logoutTitle: "تسجيل الخروج", logoutMessage: "هل أنت متأكد أنك تريد إنهاء الجلسة الحالية وتسجيل الخروج؟",
@@ -2245,7 +2266,7 @@ function Sidebar({ active, onNavigate, collapsed, onToggleCollapse, mobileOpen, 
                     }}
                   />
                 )}
-                <Icon size={ICON} strokeWidth={2} style={{ flexShrink: 0 }} />
+                <Icon size={21} strokeWidth={2} style={{ flexShrink: 0 }} />
                 {(!collapsed || isMobile) && (
                   <span style={{ fontSize: 13.5, fontWeight: isActive ? 620 : 500, whiteSpace: "nowrap" }}>
                     {label}
@@ -2265,7 +2286,7 @@ function Sidebar({ active, onNavigate, collapsed, onToggleCollapse, mobileOpen, 
               onMouseEnter={(e) => (e.currentTarget.style.background = tokens.hoverTint)}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              {collapsed ? <ChevronRight size={ICON} /> : <><ChevronLeft size={ICON} /><span style={{ fontSize: 13 }}>{t("common.collapse", "Collapse")}</span></>}
+              {collapsed ? <ChevronRight size={21} /> : <><ChevronLeft size={21} /><span style={{ fontSize: 13 }}>{t("common.collapse", "Collapse")}</span></>}
             </button>
           )}
           <button
@@ -2282,7 +2303,7 @@ function Sidebar({ active, onNavigate, collapsed, onToggleCollapse, mobileOpen, 
             onMouseEnter={(e) => (e.currentTarget.style.background = tokens.hoverTint)}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            <LogOut size={ICON} strokeWidth={2} style={{ flexShrink: 0 }} />
+            <LogOut size={21} strokeWidth={2} style={{ flexShrink: 0 }} />
             {(!collapsed || isMobile) && <span style={{ fontSize: 13.5, fontWeight: 500 }}>{t("common.logout", "Logout")}</span>}
           </button>
         </div>
@@ -2391,7 +2412,7 @@ function TopBar({ onMenuClick, activeLabel, onNavigate, onBack, hasSubpage }) {
           onMouseEnter={(e) => (e.currentTarget.style.background = tokens.hoverTint)}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
         >
-          <Menu size={20} />
+          <Menu size={24} />
         </button>
       )}
 
@@ -3554,6 +3575,93 @@ function ThemeSettingsSubpage() {
    SECURITY & PASSWORD SUBPAGE
 ============================================================================ */
 
+// Google Authenticator card — lets the user toggle on 2-step verification,
+// scan a (demo) QR code / copy the secret key, then confirm with a 6-digit
+// code before the feature is marked as enabled.
+function GoogleAuthenticatorCard() {
+  const { tokens, accent } = useTheme();
+  const { showFeedback } = useFeedback();
+  const { t } = useLang();
+  const [enabled, setEnabled] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [otp, setOtp] = useState("");
+
+  const secretKey = "JBSW Y3DP EHPK 3PXP";
+
+  const handleToggle = (v) => {
+    if (v) {
+      setSetupOpen(true);
+    } else {
+      setEnabled(false);
+      setSetupOpen(false);
+      setOtp("");
+      showFeedback(t("security.authenticatorDisabled", "Google Authenticator disabled"));
+    }
+  };
+
+  const handleVerify = () => {
+    if (otp.trim().length !== 6) return;
+    setEnabled(true);
+    setSetupOpen(false);
+    setOtp("");
+    showFeedback(t("security.authenticatorEnabled", "Google Authenticator enabled"));
+  };
+
+  return (
+    <Card padding={22}>
+      <SectionHeading tone="blue">{t("security.authenticatorTitle", "Google Authenticator")}</SectionHeading>
+      <BiometricRow
+        icon={Smartphone}
+        tone="blue"
+        title={t("security.authenticatorRowTitle", "Authenticator App")}
+        description={t("security.authenticatorRowDesc", "Use Google Authenticator for 2-step verification")}
+        checked={enabled || setupOpen}
+        onChange={handleToggle}
+      />
+
+      {setupOpen && !enabled && (
+        <div style={{ borderTop: `1px solid ${tokens.divider}`, marginTop: 4, paddingTop: 18 }}>
+          <div className="flex items-start gap-4" style={{ marginBottom: 16 }}>
+            <div
+              className="flex items-center justify-center rounded-xl flex-shrink-0"
+              style={{ width: 84, height: 84, background: tokens.surfaceSunken, border: `1px solid ${tokens.bgBorder}` }}
+            >
+              <QrCode size={44} color={tokens.textTertiary} strokeWidth={1.5} />
+            </div>
+            <div className="min-w-0">
+              <p style={{ fontSize: 12.5, color: tokens.textSecondary, lineHeight: 1.5 }}>
+                {t("security.authenticatorScanHint", "Scan this QR code with the Google Authenticator app, or enter the key manually:")}
+              </p>
+              <div
+                style={{
+                  fontFamily: "monospace", fontSize: 13, fontWeight: 650, color: accent("blue"),
+                  marginTop: 6, letterSpacing: "0.05em", wordBreak: "break-all",
+                }}
+              >
+                {secretKey}
+              </div>
+            </div>
+          </div>
+          <FloatingInput
+            label={t("security.authenticatorCodeLabel", "6-digit code")}
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          />
+          <Button icon={ShieldCheck} onClick={handleVerify} disabled={otp.trim().length !== 6}>
+            {t("security.authenticatorVerify", "Verify & Enable")}
+          </Button>
+        </div>
+      )}
+
+      {enabled && (
+        <p style={{ fontSize: 12, color: accent("green"), marginTop: 8, fontWeight: 600 }}>
+          {t("security.authenticatorEnabledHint", "Google Authenticator is protecting your account.")}
+        </p>
+      )}
+    </Card>
+  );
+}
+
 function SecurityPasswordSubpage() {
   const { tokens, accent } = useTheme();
   const { showFeedback } = useFeedback();
@@ -3574,7 +3682,7 @@ function SecurityPasswordSubpage() {
   };
 
   return (
-    <div className="flex flex-col gap-5" style={{ maxWidth: 460 }}>
+    <div className="flex flex-col gap-5" style={{ maxWidth: 520 }}>
       <Card padding={22}>
         <SectionHeading tone="red">{t("security.changePassword", "Change Password")}</SectionHeading>
         <FloatingInput
@@ -3605,6 +3713,8 @@ function SecurityPasswordSubpage() {
           {t("security.hint", "Use at least 6 characters. You'll stay logged in on this device after updating.")}
         </p>
       </Card>
+
+      <GoogleAuthenticatorCard />
     </div>
   );
 }
