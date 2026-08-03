@@ -1,0 +1,51 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: রিপো চেকআউট করা
+        uses: actions/checkout@v4
+
+      - name: Node.js সেটআপ
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: JDK সেটআপ
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: npm ডিপেন্ডেন্সি ইনস্টল
+        run: npm install
+
+      - name: ওয়েব অ্যাপ বিল্ড (Vite)
+        run: npm run build
+
+      - name: Capacitor Android প্ল্যাটফর্ম যোগ (প্রথমবার না থাকলে)
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Gradle দিয়ে APK বিল্ড
+        working-directory: ./android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
+      - name: APK আপলোড (Artifact হিসেবে)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fleetpro-tms-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
