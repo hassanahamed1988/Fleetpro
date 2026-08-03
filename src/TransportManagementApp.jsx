@@ -486,6 +486,53 @@ function ThemeProvider({ children }) {
       }
     : { background: tokens.bg };
 
+  // ---------------------------------------------------------------------
+  // EDGE-TO-EDGE STATUS BAR — makes the app background reach all the way
+  // up behind the device status bar (time / signal / battery / wifi icons),
+  // with no separate white or black strip ever showing behind it, and with
+  // the icons themselves auto-switching light/dark to stay legible. Wired
+  // here (not per-page) so it's automatically global — every screen shares
+  // this same ThemeProvider and therefore the same fix.
+  //
+  //  1. `viewport-fit=cover` tells the browser/webview the page is allowed
+  //     to draw underneath the notch/status bar, which is what makes
+  //     `env(safe-area-inset-top)` resolve to a real, non-zero value.
+  //  2. `theme-color` is kept in sync with the live background color, so
+  //     Android's status bar (and Chrome's UI chrome) always matches.
+  //  3. `apple-mobile-web-app-status-bar-style` flips between
+  //     "black-translucent" (light icons, for dark backgrounds) and
+  //     "default" (dark icons, for light backgrounds) so iOS status bar
+  //     icons stay visible against whatever background color is active.
+  useEffect(() => {
+    const ensureMeta = (attr, name, content) => {
+      let el = document.querySelector(`meta[${attr}="${name}"]`);
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attr, name);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
+
+    let vp = document.querySelector('meta[name="viewport"]');
+    if (!vp) {
+      vp = document.createElement("meta");
+      vp.setAttribute("name", "viewport");
+      document.head.appendChild(vp);
+    }
+    const currentVp = vp.getAttribute("content") || "width=device-width, initial-scale=1";
+    if (!/viewport-fit=cover/.test(currentVp)) {
+      vp.setAttribute("content", `${currentVp}, viewport-fit=cover`);
+    }
+
+    ensureMeta("name", "theme-color", tokens.bg);
+    ensureMeta("name", "apple-mobile-web-app-capable", "yes");
+    ensureMeta("name", "mobile-web-app-capable", "yes");
+    // Dark background → light (translucent) status bar icons. Light
+    // background → default dark icons. Always legible either way.
+    ensureMeta("name", "apple-mobile-web-app-status-bar-style", tokens.isDark ? "black-translucent" : "default");
+  }, [tokens.bg, tokens.isDark]);
+
   const value = useMemo(() => ({
     mode, setMode, tokens, customBg,
     setCustomBackground, setPresetPalette, setLayoutColor, restoreDefaultBackground,
@@ -505,6 +552,22 @@ function ThemeProvider({ children }) {
           transition: "background-color 260ms ease, color 260ms ease",
         }}
       >
+        {/* Full-bleed strip painted behind the device status bar. Fixed +
+            highest z-index so it always sits above every screen, dialog,
+            and menu, and always carries the current background color —
+            never a leftover white/black strip — updating the instant the
+            background changes since it reads `tokens.bg` directly. */}
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0,
+            height: "env(safe-area-inset-top, 0px)",
+            background: tokens.bg,
+            zIndex: 2147483000,
+            pointerEvents: "none",
+          }}
+        />
         {children}
       </div>
     </ThemeContext.Provider>
